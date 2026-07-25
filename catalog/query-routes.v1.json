@@ -15,7 +15,7 @@
       "uri": "plesk://host/subscription/query/snapshot",
       "twin_type": "plesk.subscription",
       "package": "subscriptions",
-      "status": "skeleton",
+      "status": "wired-connector",
       "summary": "Subscription list/capacity snapshot for planning domains"
     },
     {
@@ -23,7 +23,7 @@
       "uri": "plesk://host/site/query/docroot",
       "twin_type": "plesk.site.docroot",
       "package": "domain",
-      "status": "skeleton",
+      "status": "wired-connector",
       "summary": "Live docroot / www_root decision fact for a domain"
     },
     {
@@ -31,7 +31,7 @@
       "uri": "plesk://host/dns/query/authority",
       "twin_type": "plesk.dns.authority",
       "package": "dns",
-      "status": "normalize-existing",
+      "status": "wired-connector",
       "summary": "Normalize connector authority probe into twin-fact envelope"
     }
   ],
