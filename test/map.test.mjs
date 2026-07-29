@@ -170,3 +170,46 @@ test("managed DNS workflow selects Namecheap as a second connector from the envi
   assert.equal(dns.connector, "urirun-connector-namecheap-dns");
   assert.equal(dns.uri, "dns://host/records/command/apply");
 });
+
+test("a refused live docroot fact blocks publish before the command connector", () => {
+  const observed = observedFromApiInventory({
+    extensions: LIVE_EXTENSIONS,
+    reviewedOperations: ["plesk.ssl.ensure"],
+    twinFacts: [{
+      twin_type: "plesk.site.docroot",
+      fact_quality: "fresh",
+      payload: {domain: "docs.subactor.com", observed: "/docs.subactor.com", decision: "refuse"},
+    }],
+  });
+  const result = resolveNamedIntent(
+    pleskMap({observed, credentials: FULL, instanceId: "panel-1"}),
+    "publish-site",
+  );
+
+  assert.equal(result.resolved, false);
+  assert.equal(result.gap.kind, "fact_refused");
+  assert.equal(result.gap.detail, "plesk.site.docroot");
+  assert.equal(result.gap.execution_policy, "precondition-blocked");
+});
+
+test("cloudflaredns binding keeps DNS reconciliation on the Plesk connector", () => {
+  const routes = baseline.capabilities.flatMap((entry) => entry.provided_by.map((provider) => provider.uri));
+  const observed = observedFromApiInventory({
+    extensions: LIVE_EXTENSIONS,
+    reviewedOperations: ["plesk.ssl.ensure"],
+    connectors: ["urirun-connector-plesk", "urirun-connector-namecheap-dns"],
+    routes,
+    twinFacts: [{
+      twin_type: "plesk.dns.authority",
+      fact_quality: "fresh",
+      payload: {hostname: "example.com", management_plane: "cloudflaredns"},
+    }],
+  });
+  const map = pleskMap({observed, credentials: FULL, instanceId: "panel-1"});
+  const result = resolveNamedIntent(map, "publish-site-with-managed-dns");
+
+  assert.equal(result.resolved, true);
+  const dns = result.plan.find((step) => step.capability === "dns.records.reconcile");
+  assert.equal(dns.connector, "urirun-connector-plesk");
+  assert.equal(dns.uri, "plesk://host/dns/command/reconcile");
+});

@@ -76,16 +76,48 @@ export function observedFromApiInventory({
   sites = [],
   dnsZones = [],
   discoveries = [],
+  twinFacts = [],
   connectors,
   routes,
   bindings = {},
 } = {}) {
   const observed = observedFromExtensionCatalog({extensions, reviewedOperations, dnsModule});
+  const capabilities = {...observed.capabilities};
+  const factSites = [];
+  const factDnsZones = [];
+  const factBindings = {};
+  for (const fact of twinFacts) {
+    const payload = fact?.payload || {};
+    if (fact?.twin_type === "plesk.site.docroot") {
+      factSites.push({domain: payload.domain, docroot: payload.expected || payload.observed || payload.docroot});
+      if (fact?.fact_quality !== "fresh" || payload.decision === "refuse") {
+        capabilities["plesk.site.publish"] = {
+          state: "blocked",
+          blockers: [{
+            kind: payload.decision === "refuse" ? "fact_refused" : "fact_not_fresh",
+            detail: "plesk.site.docroot",
+          }],
+        };
+      }
+    }
+    if (fact?.twin_type === "plesk.dns.authority") {
+      factDnsZones.push({
+        hostname: payload.hostname,
+        management_plane: payload.management_plane,
+        service: "plesk-xml-api",
+      });
+      if (payload.management_plane) factBindings.dns_management_plane = String(payload.management_plane);
+    }
+  }
   return {
     ...observed,
+    capabilities,
     connectors: Array.isArray(connectors) ? connectors.map(String) : undefined,
     routes: Array.isArray(routes) ? routes.map(String) : undefined,
-    bindings: Object.fromEntries(Object.entries(bindings).map(([key, value]) => [String(key), String(value)])),
+    bindings: {
+      ...factBindings,
+      ...Object.fromEntries(Object.entries(bindings).map(([key, value]) => [String(key), String(value)])),
+    },
     resources: [
       ...subscriptions.map((item) => ({
         type: "plesk.subscription",
@@ -97,7 +129,7 @@ export function observedFromApiInventory({
           domains_used: item?.domains_used ?? null,
         },
       })),
-      ...sites.map((item) => ({
+      ...[...sites, ...factSites].map((item) => ({
         type: "plesk.site",
         id: String(item?.domain || ""),
         service: "plesk-xml-api",
@@ -109,7 +141,7 @@ export function observedFromApiInventory({
         service: "plesk-extensions",
         attributes: {name: String(item?.name || ""), version: String(item?.version || ""), active: Boolean(item?.active)},
       })),
-      ...dnsZones.map((item) => ({
+      ...[...dnsZones, ...factDnsZones].map((item) => ({
         type: "dns.zone",
         id: String(item?.hostname || ""),
         service: String(item?.service || ""),

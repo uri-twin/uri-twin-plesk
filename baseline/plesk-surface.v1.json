@@ -1,7 +1,7 @@
 {
   "schema": "uri-twin.baseline/v1",
   "twin_family": "plesk",
-  "version": "2",
+  "version": "3",
   "summary": "Reviewed Plesk service, resource and workflow map loaded from git by default. Live API observation enriches instance data but never grants a new executable route.",
   "environment": {
     "kind": "plesk-panel",
@@ -188,7 +188,7 @@
           "connector": "urirun-connector-plesk",
           "uri": "plesk://host/dns/query/records",
           "requires_credentials": ["plesk-xml-subscription-owner"],
-          "requires_bindings": {"dns_management_plane": "plesk"}
+          "requires_bindings": {"dns_management_plane": ["plesk", "cloudflaredns"]}
         },
         {
           "connector": "urirun-connector-namecheap-dns",
@@ -211,7 +211,7 @@
           "connector": "urirun-connector-plesk",
           "uri": "plesk://host/dns/command/reconcile",
           "requires_credentials": ["plesk-xml-subscription-owner"],
-          "requires_bindings": {"dns_management_plane": "plesk"},
+          "requires_bindings": {"dns_management_plane": ["plesk", "cloudflaredns"]},
           "preconditions": ["authority twin confirms Plesk management plane"]
         },
         {
