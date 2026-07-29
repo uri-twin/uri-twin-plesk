@@ -15,14 +15,14 @@ export {baseline};
 
 export function pleskBaseline() {
   return {
-    twin_family: baseline.twin_family,
-    version: baseline.version,
+    ...baseline,
     capabilities: baseline.capabilities.map((entry) =>
       defineCapability({
         id: entry.id,
         twinFamily: baseline.twin_family,
         effect: entry.effect,
         transport: entry.transport,
+        status: entry.status || "available",
         risk: entry.risk,
         requiresCredentials: entry.requires_credentials || [],
         requiresCapabilities: entry.requires_capabilities || [],
@@ -64,6 +64,62 @@ export function observedFromExtensionCatalog({extensions = [], reviewedOperation
   return {feature_flags: featureFlags, capabilities};
 }
 
+/**
+ * Normalize API responses into instance inventory without granting authority.
+ * Unknown resource types stay visible as review-required discoveries in core.
+ */
+export function observedFromApiInventory({
+  extensions = [],
+  reviewedOperations = [],
+  dnsModule = false,
+  subscriptions = [],
+  sites = [],
+  dnsZones = [],
+  discoveries = [],
+  connectors,
+  routes,
+  bindings = {},
+} = {}) {
+  const observed = observedFromExtensionCatalog({extensions, reviewedOperations, dnsModule});
+  return {
+    ...observed,
+    connectors: Array.isArray(connectors) ? connectors.map(String) : undefined,
+    routes: Array.isArray(routes) ? routes.map(String) : undefined,
+    bindings: Object.fromEntries(Object.entries(bindings).map(([key, value]) => [String(key), String(value)])),
+    resources: [
+      ...subscriptions.map((item) => ({
+        type: "plesk.subscription",
+        id: String(item?.id || item?.name || ""),
+        service: "plesk-xml-api",
+        attributes: {
+          name: String(item?.name || ""),
+          domains_limit: item?.domains_limit ?? null,
+          domains_used: item?.domains_used ?? null,
+        },
+      })),
+      ...sites.map((item) => ({
+        type: "plesk.site",
+        id: String(item?.domain || ""),
+        service: "plesk-xml-api",
+        attributes: {domain: String(item?.domain || ""), docroot: item?.docroot == null ? null : String(item.docroot)},
+      })),
+      ...extensions.map((item) => ({
+        type: "plesk.extension",
+        id: String(item?.id || ""),
+        service: "plesk-extensions",
+        attributes: {name: String(item?.name || ""), version: String(item?.version || ""), active: Boolean(item?.active)},
+      })),
+      ...dnsZones.map((item) => ({
+        type: "dns.zone",
+        id: String(item?.hostname || ""),
+        service: String(item?.service || ""),
+        attributes: {hostname: String(item?.hostname || ""), management_plane: String(item?.management_plane || "")},
+      })),
+      ...discoveries,
+    ],
+  };
+}
+
 export function pleskMap({observed, credentials, instanceId, observedAt}) {
   return composeMap({baseline: pleskBaseline(), observed, credentials, instanceId, observedAt});
 }
@@ -73,12 +129,9 @@ export function resolvePleskIntent(map, intent) {
 }
 
 /** Named intents, so callers ask for an outcome rather than assembling URIs. */
-export const PLESK_INTENTS = Object.freeze({
-  "publish-site": ["plesk.site.publish"],
-  "publish-site-with-tls": ["plesk.site.publish", "plesk.ssl.ensure"],
-  "create-mailbox": ["plesk.mailbox.create"],
-  "observe-topology": ["plesk.subscription.snapshot", "plesk.site.docroot"],
-});
+export const PLESK_INTENTS = Object.freeze(Object.fromEntries(
+  Object.entries(baseline.workflows || {}).map(([name, workflow]) => [name, workflow.requires.map(String)]),
+));
 
 export function resolveNamedIntent(map, name) {
   const requires = PLESK_INTENTS[name];

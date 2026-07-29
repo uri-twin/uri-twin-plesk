@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   baseline,
+  observedFromApiInventory,
   observedFromExtensionCatalog,
   pleskMap,
   PLESK_INTENTS,
@@ -30,7 +31,7 @@ test("baseline ships every capability with a declared credential and provider", 
   for (const entry of baseline.capabilities) {
     assert.ok(entry.provided_by?.length, `${entry.id} has no provider`);
     assert.ok(Array.isArray(entry.requires_credentials), `${entry.id} has no credential list`);
-    assert.match(entry.id, /^plesk\./);
+    assert.match(entry.id, /^(plesk|dns)\./);
   }
 });
 
@@ -66,13 +67,10 @@ test("the baseline records why the admin credential cannot stand in for the XML 
   assert.match(handle.authority, /customer account/);
 });
 
-test("publish-site-with-tls is blocked by the DNS module, not by the certificate step", () => {
+test("public DNS authority observation does not pretend to require a Plesk DNS module", () => {
   const result = resolveNamedIntent(mapFor({dnsModule: false}), "publish-site-with-tls");
 
-  assert.equal(result.resolved, false);
-  assert.equal(result.gap.capability, "plesk.dns.authority");
-  assert.equal(result.gap.kind, "feature_flag_off");
-  assert.equal(result.gap.detail, "has_dns_module");
+  assert.equal(result.resolved, true);
 });
 
 test("an uninstalled SSL It! downgrades only the certificate capability", () => {
@@ -104,12 +102,12 @@ test("live observation cannot introduce a capability the baseline never reviewed
   assert.equal(map.capabilities.length, baseline.capabilities.length);
 });
 
-test("the root-SSH capability is declared but uncredentialed, so plans fail by name", () => {
+test("the root-SSH capability stays planned even if a credential is later present", () => {
   const map = mapFor();
   const utility = map.capabilities.find((entry) => entry.id === "plesk.server.utility");
 
-  assert.equal(utility.execution_policy, "credential-missing");
-  assert.deepEqual(utility.blockers, [{kind: "credential_missing", detail: "plesk-root-ssh"}]);
+  assert.equal(utility.execution_policy, "discovery-only");
+  assert.deepEqual(utility.blockers, [{kind: "provider_not_implemented", detail: "plesk.server.utility"}]);
 });
 
 test("create-mailbox needs the admin key and the subscription snapshot", () => {
@@ -132,5 +130,43 @@ test("every named intent references capabilities that exist in the baseline", ()
 
 test("the map hash changes when observation changes and is stable when it does not", () => {
   assert.equal(mapFor().map_hash, mapFor().map_hash);
-  assert.notEqual(mapFor().map_hash, mapFor({dnsModule: false}).map_hash);
+  assert.notEqual(mapFor().map_hash, mapFor({extensions: []}).map_hash);
+});
+
+test("API inventory enriches reviewed resources and quarantines an unknown module", () => {
+  const observed = observedFromApiInventory({
+    extensions: LIVE_EXTENSIONS,
+    reviewedOperations: ["plesk.ssl.ensure"],
+    subscriptions: [{id: "12", name: "main", domains_limit: 10, domains_used: 3}],
+    sites: [{domain: "docs.subactor.com", docroot: "/docs.subactor.com"}],
+    discoveries: [{type: "plesk.module.experimental", id: "ai-button", attributes: {active: true}}],
+  });
+  const map = pleskMap({observed, credentials: FULL, instanceId: "panel-1"});
+
+  assert.ok(map.resources.some((item) => item.type === "plesk.subscription" && item.id === "12"));
+  assert.ok(map.resources.some((item) => item.type === "plesk.site" && item.id === "docs.subactor.com"));
+  assert.deepEqual(map.discoveries, [{type: "plesk.module.experimental", id: "ai-button", status: "review-required"}]);
+});
+
+test("managed DNS workflow selects Namecheap as a second connector from the environment map", () => {
+  const routes = baseline.capabilities.flatMap((entry) => entry.provided_by.map((provider) => provider.uri));
+  const observed = observedFromApiInventory({
+    extensions: LIVE_EXTENSIONS,
+    reviewedOperations: ["plesk.ssl.ensure"],
+    dnsModule: true,
+    connectors: ["urirun-connector-plesk", "urirun-connector-namecheap-dns"],
+    routes,
+    bindings: {dns_management_plane: "namecheap"},
+  });
+  const map = pleskMap({
+    observed,
+    credentials: [...FULL, "namecheap-dns-api"],
+    instanceId: "panel-1",
+  });
+  const result = resolveNamedIntent(map, "publish-site-with-managed-dns");
+
+  assert.equal(result.resolved, true);
+  const dns = result.plan.find((step) => step.capability === "dns.records.reconcile");
+  assert.equal(dns.connector, "urirun-connector-namecheap-dns");
+  assert.equal(dns.uri, "dns://host/records/command/apply");
 });
