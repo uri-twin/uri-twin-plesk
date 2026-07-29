@@ -45,6 +45,12 @@ maintainers can generate a replacement through the manually dispatched
 GitHub Actions secret. CI rejects a changed baseline, an unknown signer or an
 invalid signature.
 
+`npm run proposal -- --input observation.json` converts only unknown
+`review-required` discoveries into a deterministic draft-PR proposal. The
+proposal explicitly carries `authority_change: none`; it omits unreviewed API
+data, cannot add providers or capabilities, and requires manifest-route
+conformance plus a fresh signed baseline before acceptance.
+
 ## Query facts
 
 | Resource | Query URI |
