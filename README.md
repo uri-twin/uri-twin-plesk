@@ -29,13 +29,21 @@ The resolver never receives the credential values.
 `baseline/plesk-surface.v1.json` is reviewed code. On startup the consumer:
 
 1. clones this repository and records the exact commit and content digest;
-2. validates the baseline and caches a last-known-good snapshot;
-3. joins it with live Plesk/API observations for the bound `instance_id`;
-4. returns an ordered connector plan or one deepest actionable gap.
+2. verifies the detached Ed25519 attestation against the consumer's pinned
+   signer allowlist;
+3. validates the baseline and caches a last-known-good snapshot;
+4. joins it with live Plesk/API observations for the bound `instance_id`;
+5. returns an ordered connector plan or one deepest actionable gap.
 
 API observations can add current instances of reviewed resource types. Unknown
 modules are retained as `review-required` discoveries. They cannot become an
 executable route until this Git baseline is reviewed and updated.
+
+`npm run attest:verify` verifies the committed attestation offline. Authorized
+maintainers can generate a replacement through the manually dispatched
+`Sign baseline attestation` workflow; its private Ed25519 key is held only as a
+GitHub Actions secret. CI rejects a changed baseline, an unknown signer or an
+invalid signature.
 
 ## Query facts
 

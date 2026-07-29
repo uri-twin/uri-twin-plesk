@@ -1,6 +1,6 @@
 {
   "name": "@uri-twin/plesk",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": false,
   "description": "Plesk observe twin packages (subscriptions, docroot, dns) — query URI only",
   "type": "module",
@@ -11,7 +11,9 @@
     "./baseline": "./baseline/plesk-surface.v1.json"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "attest": "node scripts/attest-baseline.mjs",
+    "attest:verify": "node scripts/verify-attestation.mjs",
+    "test": "node --test test/*.test.mjs && npm run attest:verify"
   },
   "dependencies": {
     "@uri-twin/core": "github:uri-twin/uri-twin-core#v0.2.3"

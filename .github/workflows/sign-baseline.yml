@@ -1,0 +1,41 @@
+name: Sign baseline attestation
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref containing the reviewed baseline
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Sign reviewed baseline
+        env:
+          URI_TWIN_RELEASE_SIGNING_KEY: ${{ secrets.URI_TWIN_RELEASE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          key_file="$RUNNER_TEMP/uri-twin-release-signing-key.pem"
+          printf '%s' "$URI_TWIN_RELEASE_SIGNING_KEY" >"$key_file"
+          chmod 600 "$key_file"
+          URI_TWIN_SIGNING_KEY_FILE="$key_file" npm run attest
+          rm -f "$key_file"
+      - run: npm run attest:verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plesk-baseline-attestation
+          path: baseline/plesk-surface.v1.attestation.json
+          if-no-files-found: error

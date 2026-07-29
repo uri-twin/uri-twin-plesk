@@ -1,0 +1,14 @@
+{
+  "schema": "uri-twin.signer-policy/v1",
+  "version": 1,
+  "threshold": 1,
+  "signers": [
+    {
+      "id": "uri-twin-release-2026-01",
+      "status": "active",
+      "algorithm": "ed25519",
+      "public_key_spki_base64": "MCowBQYDK2VwAyEAdaOeJFWWK+ZTG5IpP20CtAfFIqrjdW3jBBPJ/YQ9jzM=",
+      "public_key_sha256": "sha256:8289bd2651989cead1bc8fd6a609bee91699cad07ecc55feca8a1ec8e49d04be"
+    }
+  ]
+}
