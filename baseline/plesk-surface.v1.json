@@ -1,0 +1,132 @@
+{
+  "schema": "uri-twin.baseline/v1",
+  "twin_family": "plesk",
+  "version": "1",
+  "summary": "Reviewed Plesk surface loaded from git as the default map. Live observation only enriches it; it never introduces a capability that was not reviewed here.",
+  "credential_handles": {
+    "plesk-admin-api-key": {
+      "transport": "rest-v2",
+      "authority": "server administrator",
+      "note": "REST v2 is restricted to /api/v2/. Never used for subscription file writes."
+    },
+    "plesk-xml-subscription-owner": {
+      "transport": "xml-api",
+      "authority": "customer account that owns the subscription",
+      "note": "The panel admin login and mailbox users are rejected by the XML API with 1001/1006. Using the admin credential here is the most common cause of a false 'panel unreachable' report."
+    },
+    "plesk-sftp-subscription-user": {
+      "transport": "sftp",
+      "authority": "subscription system user",
+      "note": "Never equivalent to server administrator access; scoped to one subscription docroot."
+    },
+    "plesk-root-ssh": {
+      "transport": "ssh",
+      "authority": "server root",
+      "note": "Not implemented by the subscription transport. Declared so that a plan needing it fails with a named gap instead of silently attempting SFTP."
+    }
+  },
+  "capabilities": [
+    {
+      "id": "plesk.subscription.snapshot",
+      "effect": "query",
+      "transport": "xml-api",
+      "risk": "R0",
+      "requires_credentials": ["plesk-xml-subscription-owner"],
+      "provided_by": [
+        {"connector": "urirun-connector-plesk", "uri": "plesk://host/subscription/query/snapshot"}
+      ],
+      "summary": "Subscription list and domain capacity, used for planning before any domain is created"
+    },
+    {
+      "id": "plesk.site.docroot",
+      "effect": "query",
+      "transport": "xml-api",
+      "risk": "R0",
+      "requires_credentials": ["plesk-xml-subscription-owner"],
+      "requires_capabilities": ["plesk.subscription.snapshot"],
+      "provided_by": [
+        {"connector": "urirun-connector-plesk", "uri": "plesk://host/site/query/docroot"}
+      ],
+      "summary": "Live docroot / www_root decision fact for one domain"
+    },
+    {
+      "id": "plesk.dns.authority",
+      "effect": "query",
+      "transport": "xml-api",
+      "risk": "R0",
+      "requires_credentials": ["plesk-xml-subscription-owner"],
+      "requires_feature_flags": ["has_dns_module"],
+      "provided_by": [
+        {"connector": "urirun-connector-plesk", "uri": "plesk://host/dns/query/authority"}
+      ],
+      "summary": "Which plane actually answers for the hostname"
+    },
+    {
+      "id": "plesk.extensions.catalog",
+      "effect": "query",
+      "transport": "extension-xml",
+      "risk": "R0",
+      "requires_credentials": ["plesk-admin-api-key"],
+      "provided_by": [
+        {"connector": "urirun-connector-plesk", "uri": "plesk://host/extensions/query/catalog"}
+      ],
+      "summary": "Authoritative installed-extension state; the enrichment source for this map"
+    },
+    {
+      "id": "plesk.site.publish",
+      "effect": "command",
+      "transport": "sftp",
+      "risk": "R2",
+      "requires_credentials": ["plesk-sftp-subscription-user"],
+      "requires_capabilities": ["plesk.site.docroot"],
+      "provided_by": [
+        {
+          "connector": "urirun-connector-plesk",
+          "uri": "plesk://host/site/command/publish",
+          "preconditions": ["docroot fact documented in the plan", "dry-run plan_hash matches apply"]
+        }
+      ],
+      "summary": "Write site content into the resolved docroot. Requires the docroot fact first so publishing cannot target a guessed path."
+    },
+    {
+      "id": "plesk.mailbox.create",
+      "effect": "command",
+      "transport": "rest-v2",
+      "risk": "R2",
+      "requires_credentials": ["plesk-admin-api-key"],
+      "requires_capabilities": ["plesk.subscription.snapshot"],
+      "provided_by": [
+        {"connector": "urirun-connector-plesk", "uri": "plesk://host/mailbox/command/create"}
+      ],
+      "summary": "Create a mailbox on a subscription domain"
+    },
+    {
+      "id": "plesk.ssl.ensure",
+      "effect": "command",
+      "transport": "extension-xml",
+      "risk": "R2",
+      "requires_credentials": ["plesk-admin-api-key"],
+      "requires_feature_flags": ["has_ssl_it"],
+      "requires_capabilities": ["plesk.extensions.catalog", "plesk.dns.authority"],
+      "provided_by": [
+        {
+          "connector": "urirun-connector-plesk",
+          "uri": "plesk://host/ssl/command/ensure",
+          "preconditions": ["operation present in extension_profiles.json"]
+        }
+      ],
+      "summary": "Issue or renew a certificate through SSL It!. Depends on DNS authority because a certificate cannot be validated for a hostname this panel does not answer for."
+    },
+    {
+      "id": "plesk.server.utility",
+      "effect": "command",
+      "transport": "ssh",
+      "risk": "R3",
+      "requires_credentials": ["plesk-root-ssh"],
+      "provided_by": [
+        {"connector": "urirun-connector-plesk", "uri": "plesk://host/server/command/utility"}
+      ],
+      "summary": "Server-level CLI utilities with no remote API equivalent. Declared but intentionally uncredentialed in the standard binding."
+    }
+  ]
+}
