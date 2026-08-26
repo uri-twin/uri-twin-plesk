@@ -49,6 +49,33 @@ test("a fully credentialed panel resolves publish-site into an ordered plan", ()
   assert.equal(result.plan.at(-1).transport, "sftp");
 });
 
+test("an owner credential resolves autonomous provisioning before publication", () => {
+  const result = resolveNamedIntent(
+    mapFor({credentials: ["plesk-xml-subscription-owner", "plesk-admin-api-key"]}),
+    "publish-site-autonomous",
+  );
+
+  assert.equal(result.resolved, true);
+  assert.deepEqual(result.plan.map((step) => step.capability), [
+    "plesk.subscription.snapshot",
+    "plesk.site.docroot",
+    "plesk.deployment-credential.ensure",
+    "plesk.site.publish.autonomous",
+  ]);
+  assert.deepEqual(result.plan[2].produces_credentials, ["plesk-sftp-subscription-user"]);
+  assert.equal(result.plan[2].uri, "plesk://host/ftpuser/command/ensure");
+});
+
+test("autonomous provisioning fails closed without subscription-owner authority", () => {
+  const result = resolveNamedIntent(
+    mapFor({credentials: ["plesk-admin-api-key"]}),
+    "publish-site-autonomous",
+  );
+  assert.equal(result.resolved, false);
+  assert.equal(result.gap.capability, "plesk.subscription.snapshot");
+  assert.equal(result.gap.detail, "plesk-xml-subscription-owner");
+});
+
 // The scenario the twin exists to prevent: today this fails inside a connector
 // and becomes a ticket that asks a human to work out which credential was wrong.
 test("a panel holding only the admin key names the XML credential as the gap", () => {
