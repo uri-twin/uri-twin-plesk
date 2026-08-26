@@ -138,7 +138,13 @@ test("the root-SSH capability stays planned even if a credential is later presen
 });
 
 test("create-mailbox needs the admin key and the subscription snapshot", () => {
-  assert.equal(resolveNamedIntent(mapFor(), "create-mailbox").resolved, true);
+  const resolved = resolveNamedIntent(mapFor(), "create-mailbox");
+  assert.equal(resolved.resolved, true);
+  assert.deepEqual(resolved.plan.at(-1).produces_credentials, [
+    "plesk-mailbox-imap-user",
+    "plesk-mailbox-smtp-user",
+  ]);
+  assert.equal(resolved.plan.at(-1).uri, "plesk://host/mailbox/command/ensure");
 
   const result = resolveNamedIntent(
     mapFor({credentials: ["plesk-xml-subscription-owner", "plesk-sftp-subscription-user"]}),
@@ -146,6 +152,21 @@ test("create-mailbox needs the admin key and the subscription snapshot", () => {
   );
   assert.equal(result.resolved, false);
   assert.equal(result.gap.detail, "plesk-admin-api-key");
+});
+
+test("bootstrap-api-key produces the REST credential only from explicit bootstrap authority", () => {
+  const resolved = resolveNamedIntent(
+    mapFor({credentials: ["plesk-admin-bootstrap-login"]}),
+    "bootstrap-api-key",
+  );
+  assert.equal(resolved.resolved, true);
+  assert.deepEqual(resolved.plan.map((step) => step.capability), ["plesk.api-key.bootstrap"]);
+  assert.deepEqual(resolved.plan[0].produces_credentials, ["plesk-admin-api-key"]);
+  assert.equal(resolved.plan[0].uri, "plesk://host/auth/command/bootstrap-api-key");
+
+  const denied = resolveNamedIntent(mapFor({credentials: []}), "bootstrap-api-key");
+  assert.equal(denied.resolved, false);
+  assert.equal(denied.gap.detail, "plesk-admin-bootstrap-login");
 });
 
 test("every named intent references capabilities that exist in the baseline", () => {
