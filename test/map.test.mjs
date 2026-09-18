@@ -49,6 +49,33 @@ test("a fully credentialed panel resolves publish-site into an ordered plan", ()
   assert.equal(result.plan.at(-1).transport, "sftp");
 });
 
+test("an owner credential resolves autonomous provisioning before publication", () => {
+  const result = resolveNamedIntent(
+    mapFor({credentials: ["plesk-xml-subscription-owner", "plesk-admin-api-key"]}),
+    "publish-site-autonomous",
+  );
+
+  assert.equal(result.resolved, true);
+  assert.deepEqual(result.plan.map((step) => step.capability), [
+    "plesk.subscription.snapshot",
+    "plesk.site.docroot",
+    "plesk.deployment-credential.ensure",
+    "plesk.site.publish.autonomous",
+  ]);
+  assert.deepEqual(result.plan[2].produces_credentials, ["plesk-sftp-subscription-user"]);
+  assert.equal(result.plan[2].uri, "plesk://host/ftpuser/command/ensure");
+});
+
+test("autonomous provisioning fails closed without subscription-owner authority", () => {
+  const result = resolveNamedIntent(
+    mapFor({credentials: ["plesk-admin-api-key"]}),
+    "publish-site-autonomous",
+  );
+  assert.equal(result.resolved, false);
+  assert.equal(result.gap.capability, "plesk.subscription.snapshot");
+  assert.equal(result.gap.detail, "plesk-xml-subscription-owner");
+});
+
 // The scenario the twin exists to prevent: today this fails inside a connector
 // and becomes a ticket that asks a human to work out which credential was wrong.
 test("a panel holding only the admin key names the XML credential as the gap", () => {
@@ -111,7 +138,13 @@ test("the root-SSH capability stays planned even if a credential is later presen
 });
 
 test("create-mailbox needs the admin key and the subscription snapshot", () => {
-  assert.equal(resolveNamedIntent(mapFor(), "create-mailbox").resolved, true);
+  const resolved = resolveNamedIntent(mapFor(), "create-mailbox");
+  assert.equal(resolved.resolved, true);
+  assert.deepEqual(resolved.plan.at(-1).produces_credentials, [
+    "plesk-mailbox-imap-user",
+    "plesk-mailbox-smtp-user",
+  ]);
+  assert.equal(resolved.plan.at(-1).uri, "plesk://host/mailbox/command/ensure");
 
   const result = resolveNamedIntent(
     mapFor({credentials: ["plesk-xml-subscription-owner", "plesk-sftp-subscription-user"]}),
@@ -119,6 +152,21 @@ test("create-mailbox needs the admin key and the subscription snapshot", () => {
   );
   assert.equal(result.resolved, false);
   assert.equal(result.gap.detail, "plesk-admin-api-key");
+});
+
+test("bootstrap-api-key produces the REST credential only from explicit bootstrap authority", () => {
+  const resolved = resolveNamedIntent(
+    mapFor({credentials: ["plesk-admin-bootstrap-login"]}),
+    "bootstrap-api-key",
+  );
+  assert.equal(resolved.resolved, true);
+  assert.deepEqual(resolved.plan.map((step) => step.capability), ["plesk.api-key.bootstrap"]);
+  assert.deepEqual(resolved.plan[0].produces_credentials, ["plesk-admin-api-key"]);
+  assert.equal(resolved.plan[0].uri, "plesk://host/auth/command/bootstrap-api-key");
+
+  const denied = resolveNamedIntent(mapFor({credentials: []}), "bootstrap-api-key");
+  assert.equal(denied.resolved, false);
+  assert.equal(denied.gap.detail, "plesk-admin-bootstrap-login");
 });
 
 test("every named intent references capabilities that exist in the baseline", () => {

@@ -1,18 +1,18 @@
 {
   "schema": "uri-twin.attestation/v1",
   "version": 1,
-  "issued_at": "2026-07-29T14:02:21.687Z",
+  "issued_at": "2026-09-18T14:22:40.159Z",
   "subject": {
     "repository": "https://github.com/uri-twin/uri-twin-plesk.git",
     "path": "baseline/plesk-surface.v1.json",
     "schema": "uri-twin.baseline/v1",
-    "version": "3",
-    "digest": "sha256:c15ebc5af3acbe865d99f68bd021fc16d8328f3ddddcdcf20526c85b4dd8c5dc"
+    "version": "4",
+    "digest": "sha256:cd42231eec5c5d30e24721e799412c7e1b72eac0e45f317275601138052bffcf"
   },
   "signer": {
-    "id": "uri-twin-release-2026-01",
+    "id": "uri-twin-release-2026-02",
     "algorithm": "ed25519",
-    "public_key_sha256": "sha256:8289bd2651989cead1bc8fd6a609bee91699cad07ecc55feca8a1ec8e49d04be"
+    "public_key_sha256": "sha256:f09f2b65fd8b0f87a6a6e5234029a801ba4d42e2105a2b00611c52332901502a"
   },
-  "signature": "a60zWIlTQMTKdTw8Zk5ETFF3OzRaE9RgZ1EPQYdA15DBNFXIzLDJX3m3I2fiooR1Q+xRscigKwBZ4r6HVEGSDg=="
+  "signature": "ozbwMcVu2NIsLxafzvWM6/rscs/qdeRUE8MX9UnZ75LO/s8sl2AUiQlZHttn+C2lbVmD+MoW/2GBJeDtiKuDBA=="
 }

@@ -25,6 +25,7 @@ export function pleskBaseline() {
         status: entry.status || "available",
         risk: entry.risk,
         requiresCredentials: entry.requires_credentials || [],
+        producesCredentials: entry.produces_credentials || [],
         requiresCapabilities: entry.requires_capabilities || [],
         requiresFeatureFlags: entry.requires_feature_flags || [],
         providedBy: entry.provided_by,

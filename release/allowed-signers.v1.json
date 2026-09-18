@@ -9,6 +9,13 @@
       "algorithm": "ed25519",
       "public_key_spki_base64": "MCowBQYDK2VwAyEAdaOeJFWWK+ZTG5IpP20CtAfFIqrjdW3jBBPJ/YQ9jzM=",
       "public_key_sha256": "sha256:8289bd2651989cead1bc8fd6a609bee91699cad07ecc55feca8a1ec8e49d04be"
+    },
+    {
+      "id": "uri-twin-release-2026-02",
+      "status": "active",
+      "algorithm": "ed25519",
+      "public_key_spki_base64": "MCowBQYDK2VwAyEAt2IrtFhxZ9O3Z+2eBrPH0VofUhqYBktVgRSLHhV/IrM=",
+      "public_key_sha256": "sha256:f09f2b65fd8b0f87a6a6e5234029a801ba4d42e2105a2b00611c52332901502a"
     }
   ]
 }

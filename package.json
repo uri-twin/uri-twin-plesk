@@ -1,6 +1,6 @@
 {
   "name": "@uri-twin/plesk",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "private": false,
   "description": "Plesk observe twin packages (subscriptions, docroot, dns) — query URI only",
   "type": "module",
@@ -18,7 +18,7 @@
     "test": "node --test test/*.test.mjs && npm run attest:verify"
   },
   "dependencies": {
-    "@uri-twin/core": "github:uri-twin/uri-twin-core#v0.2.3"
+    "@uri-twin/core": "github:uri-twin/uri-twin-core#bf70afd88a74f86f603581e1dc47cfa9cc97130c"
   },
   "engines": {
     "node": ">=20"
